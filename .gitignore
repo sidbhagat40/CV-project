@@ -14,3 +14,10 @@ venv/
 *.pt
 *.pth
 *.parquet
+
+# report build
+report/*.aux
+report/*.log
+report/*.bbl
+report/*.blg
+report/*.out

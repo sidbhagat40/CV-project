@@ -80,3 +80,21 @@ class MAE(nn.Module):
         loss = ((pred.float() - target) ** 2).mean(-1)
         loss = (loss * mask).sum() / mask.sum()
         return {"loss": loss}, {"pred": pred, "mask": mask}
+
+    def unpatchify(self, x):
+        p = self.encoder.patch_size
+        h, w = self.encoder.grid_size
+        x = x.reshape(x.shape[0], h, w, p, p, 3)
+        return torch.einsum("nhwpqc->nchpwq", x).reshape(x.shape[0], 3, h * p, w * p)
+
+    @torch.no_grad()
+    def reconstruct(self, imgs):
+        """Returns (masked input, full reconstruction, reconstruction pasted over visible patches), all in the
+        normalized input space of `imgs`. Pixel statistics of the target are restored when `norm_pix_loss`."""
+        _, extras = self.forward(imgs)
+        pred, mask = extras["pred"].float(), extras["mask"].unsqueeze(-1)
+        target = self.patchify(imgs)
+        if self.norm_pix_loss:
+            pred = pred * (target.var(-1, keepdim=True) + 1e-6) ** 0.5 + target.mean(-1, keepdim=True)
+        return (self.unpatchify(target * (1 - mask)), self.unpatchify(pred),
+                self.unpatchify(target * (1 - mask) + pred * mask))

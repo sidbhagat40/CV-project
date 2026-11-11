@@ -1,0 +1,117 @@
+\documentclass{article}
+\usepackage[preprint]{neurips_2025}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\graphicspath{{../outputs/}{figures/}}
+
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\usepackage{xcolor}
+
+\title{Cross-Domain Self-Supervised Pretraining\\for Robust Driving Perception}
+
+\author{%
+  \todo{Author names} \\
+  \todo{Affiliation} \\
+  \texttt{\todo{email}}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Driving perception models degrade under conditions they were not trained on, such as fog, night or a new city.
+We ask whether self-supervised pretraining on \emph{more diverse} unlabeled driving footage improves robustness to such
+shifts, and whether this is worth more than additional labeled data from a single domain.
+We pretrain a ViT-S/16 with masked autoencoding (MAE; MoCo~v3 as an ablation) on pools of driving frames of
+\emph{identical size and compute} that differ only in diversity (single-condition BDD100K, condition-balanced BDD100K,
+and BDD100K+nuScenes+Waymo). Each model is fine-tuned on one labeled source domain (BDD100K) and evaluated on
+shifted targets (BDD night/rain/snow, nuImages, Waymo, Cityscapes, ACDC), reporting both raw and \emph{effective}
+robustness. \todo{One sentence with the headline quantitative result once experiments finish.}
+\end{abstract}
+
+\section{Introduction}
+Autonomous-driving perception is deployed across cities, weather and lighting that no labeled training set covers
+exhaustively. Labels are expensive, whereas unlabeled driving video is abundant. Self-supervised learning (SSL) can
+exploit this, but a basic question is open: when the unlabeled data budget is fixed, \emph{what composition of
+footage} yields the most robust representation? Comparing a large diverse corpus with a small narrow one confounds
+diversity with scale, so we control for dataset size and pretraining compute and vary only the diversity of the pool.
+
+\paragraph{Contributions.}
+(i) A controlled protocol with iso-size pools and iso-step pretraining that isolates diversity from scale;
+(ii) a multi-dataset, multi-condition evaluation of segmentation and detection with effective-robustness analysis;
+(iii) a comparison of the benefit of diverse pretraining against extra single-domain labels (an ``exchange rate'');
+(iv) an open codebase reproducing all experiments.
+
+\section{Literature Review}
+\paragraph{Self-supervised vision transformers.}
+MAE~\cite{he2022mae} reconstructs masked patches and is memory-efficient because the encoder sees only visible
+tokens; MoCo~v3~\cite{chen2021mocov3} learns invariances via contrastive views. DINOv2~\cite{oquab2024dinov2}
+shows that curating data for diversity matters for the quality of learned features.
+\paragraph{Robustness under distribution shift.}
+Taori et al.~\cite{taori2020measuring} separate genuine robustness from improvements that merely follow in-domain
+accuracy through \emph{effective robustness}, which we adopt.
+\paragraph{Driving datasets and domain generalization.}
+BDD100K~\cite{yu2020bdd100k}, nuScenes~\cite{caesar2020nuscenes}, Waymo~\cite{sun2020waymo}, Cityscapes~\cite{cordts2016cityscapes}
+and ACDC~\cite{sakaridis2021acdc} cover different geographies, sensors and conditions. Domain-generalization methods for
+segmentation such as RobustNet~\cite{choi2021robustnet} modify the training objective; we instead study the
+\emph{data} used for pretraining. \todo{Add driving-specific SSL work.}
+
+\section{Problem Statement}
+Let $\mathcal{U}$ be a union of unlabeled driving datasets and $P \subset \mathcal{U}$ a pool with $|P|=n$.
+A backbone $f_P$ is pretrained on $P$ for a fixed number of optimizer steps, then fine-tuned on labeled data from a
+single source domain $\mathcal{D}_s$. For each target domain $\mathcal{D}_t$ we measure the metric $m_t(f_P)$
+(mIoU or AP). We test whether, for fixed $n$ and compute, pools of higher diversity give higher
+$m_t$ on shifted targets, in particular beyond what the in-domain score $m_s$ predicts.
+Hypotheses H1--H5 are: (H1) diverse pools improve OOD performance; (H2) this holds for targets whose dataset is absent
+from the pool; (H3) a diverse pool beats a $3\times$ larger single-source pool; (H4) diverse pretraining is worth
+$k\times$ more single-domain labels; (H5) the effect is not specific to MAE.
+
+\section{Proposed Method}
+\paragraph{Pools.} Frames from BDD100K, nuScenes and Waymo are resized to a 256\,px short side. \texttt{build\_pool}
+returns exactly $n$ frames (it raises otherwise), using source weights, filters and water-filled balancing over
+time of day and weather, and excludes all evaluation images to prevent leakage.
+\paragraph{Pretraining.} ViT-S/16 trained with MAE (75\% masking, normalized-pixel loss) or MoCo~v3 with temporal
+positives. Length is fixed in \emph{steps}, identical across pools.
+\paragraph{Fine-tuning.} Semantic FPN (and a linear probe) on Cityscapes-19 classes, and Faster R-CNN~\cite{ren2015faster}
+on a ViT pyramid for harmonized \textit{vehicle}/\textit{pedestrian} detection, with layer-wise learning-rate decay. The labeled
+subset depends only on file, filter, fraction and subset seed.
+\paragraph{Metrics.} mIoU/AP per domain; mean and worst OOD; effective robustness as the residual of OOD from a
+logit-linear fit of OOD on ID over baseline (random/ImageNet) models~\cite{taori2020measuring}; pool diversity via
+metadata entropy and the Vendi score~\cite{friedman2023vendi}. No checkpoint or hyper-parameter is chosen on OOD targets.
+
+\section{Experiments and Results}
+\paragraph{Setup.} Datasets, pools, recipes and compute as in the repository (\texttt{docs/RESEARCH\_PLAN.md}).
+Experiments: E1 diversity, E2 leave-one-dataset-out, E3 scale vs.\ diversity, E4 label scaling, E5 method.
+\begin{table}[h]
+  \caption{Per-domain performance (mean$\pm$std over seeds). \todo{Fill from \texttt{outputs/e1\_diversity/*\_summary.csv}.}}
+  \label{tab:main}
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Init & ID & mean OOD & worst OOD \\
+    \midrule
+    Random & \todo{--} & \todo{--} & \todo{--} \\
+    ImageNet & \todo{--} & \todo{--} & \todo{--} \\
+    MAE narrow & \todo{--} & \todo{--} & \todo{--} \\
+    MAE diverse & \todo{--} & \todo{--} & \todo{--} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\todo{Figures: ID vs OOD scatter (effective robustness), diversity vs OOD, label scaling, MAE reconstructions
+(\texttt{scripts/visualize\_mae.py}), pool composition (\texttt{scripts/describe\_pools.py}), qualitative fog/night
+(\texttt{scripts/demo.py}). Include with \texttt{\textbackslash includegraphics}.}
+
+\section{Conclusions}
+\todo{Summarize findings against H1--H5, limitations (18K-frame budget, single laptop GPU, one pretraining seed,
+small target slices), and future work (larger pools, temporal SSL, ConvNet backbones).}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
