@@ -1,0 +1,105 @@
+import numpy as np
+import pandas as pd
+import pytest
+import torch
+
+from xdssl.data.pools import apply_filter, build_pool, waterfill
+from xdssl.engine.optim import param_groups
+from xdssl.metrics.diversity import metadata_entropy, vendi_score
+from xdssl.metrics.robustness import effective_robustness, fit_baseline, summarize_domains
+from xdssl.metrics.segmentation import confusion_matrix, miou
+from xdssl.models.mae import MAE
+from xdssl.models.segmentation import SegmentationModel
+from xdssl.models.vit import create_vit
+
+
+def test_waterfill_respects_caps_and_total():
+    assert waterfill(10, [100, 100]) == [5, 5]
+    assert waterfill(10, [2, 100, 100]) == [2, 4, 4]
+    assert sum(waterfill(7, [3, 3, 3])) == 7
+    with pytest.raises(ValueError):
+        waterfill(10, [2, 3])
+
+
+def test_apply_filter_include_exclude():
+    df = pd.DataFrame({"a": ["x", "y", "z"], "b": [1, 2, 3]})
+    assert apply_filter(df, {"a": ["x", "y"]}, {"b": 2})["a"].tolist() == ["x"]
+
+
+def _index(tmp_path, n_per=50):
+    from xdssl.data.frames import write_manifest
+    for ds in ["d1", "d2"]:
+        rows = [{"frame_id": f"{ds}/{i}", "dataset": ds, "split": "train", "sequence_id": f"{ds}s{i // 5}",
+                 "camera": "front", "timestamp": i, "path": f"{ds}/{i}.jpg",
+                 "weather": ["clear", "rain"][i % 2], "timeofday": "day" if i < 40 else "night",
+                 "location": ds, "scene_type": "x"} for i in range(n_per)]
+        write_manifest(rows, tmp_path, ds)
+
+
+def test_build_pool_is_exact_size_and_balanced(tmp_path):
+    _index(tmp_path)
+    spec = {"name": "p", "size": 40, "seed": 0, "balance_by": ["timeofday"],
+            "sources": [{"dataset": "d1", "weight": 1}, {"dataset": "d2", "weight": 1}]}
+    pool = build_pool(spec, tmp_path)
+    assert len(pool) == 40 and pool.frame_id.is_unique
+    assert pool.dataset.value_counts().to_dict() == {"d1": 20, "d2": 20}
+    assert (pool.timeofday == "night").sum() == 20  # 10 night frames per source, all taken by water-filling
+    # determinism
+    assert build_pool(spec, tmp_path).frame_id.tolist() == pool.frame_id.tolist()
+
+
+def test_build_pool_raises_when_source_too_small(tmp_path):
+    _index(tmp_path)
+    spec = {"name": "p", "size": 90, "sources": [{"dataset": "d1", "weight": 2}, {"dataset": "d2", "weight": 1}]}
+    with pytest.raises(ValueError):
+        build_pool(spec, tmp_path)
+
+
+def test_miou_perfect_and_ignore():
+    t = torch.tensor([[0, 1], [2, 255]])
+    cm = confusion_matrix(t.clamp(max=2), t, 3)
+    assert miou(cm) == 1.0
+
+
+def test_vendi_bounds():
+    assert vendi_score(np.ones((50, 8))) == pytest.approx(1.0, abs=1e-6)
+    assert vendi_score(np.eye(8)) == pytest.approx(8.0, rel=1e-6)
+
+
+def test_metadata_entropy():
+    df = pd.DataFrame({"a": ["x"] * 5 + ["y"] * 5})
+    assert metadata_entropy(df, ["a"]) == pytest.approx(1.0)
+
+
+def test_effective_robustness_zero_on_fit_line():
+    ids, oods = [0.3, 0.5, 0.7], [0.2, 0.35, 0.5]
+    fit = fit_baseline(ids, oods)
+    assert abs(effective_robustness(0.5, 0.35, fit)) < 0.02
+    assert effective_robustness(0.5, 0.45, fit) > 0.05
+
+
+def test_summarize_domains():
+    s = summarize_domains({"a": {"mIoU": 0.6}, "b": {"mIoU": 0.3}, "c": {"mIoU": 0.4}}, "mIoU", "a")
+    assert s["worst_ood_domain"] == "b" and s["mean_ood"] == pytest.approx(0.35)
+
+
+def test_mae_forward_and_vit_resolution_change():
+    vit = create_vit("vit_tiny", img_size=(64, 64))
+    mae = MAE(vit, decoder_dim=32, decoder_depth=1, decoder_heads=2)
+    losses, out = mae(torch.randn(2, 3, 64, 64))
+    assert losses["loss"].ndim == 0 and out["mask"].sum() == 2 * 12
+    feats = vit.forward_features(torch.randn(1, 3, 96, 160), [3, 11])
+    assert feats[0].shape == (1, 192, 6, 10)
+
+
+def test_segmentation_model_output_shape():
+    model = SegmentationModel(create_vit("vit_tiny", img_size=(64, 64)), 19)
+    assert model(torch.randn(2, 3, 64, 96)).shape == (2, 19, 64, 96)
+
+
+def test_layer_decay_groups():
+    vit = create_vit("vit_tiny")
+    model = SegmentationModel(vit, 19)
+    groups = param_groups(model, 1e-3, 0.05, backbone=vit, layer_decay=0.5)
+    lrs = sorted({g["lr"] for g in groups})
+    assert lrs[0] == pytest.approx(1e-3 * 0.5 ** 13) and lrs[-1] == pytest.approx(1e-3)

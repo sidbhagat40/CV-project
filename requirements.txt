@@ -1,0 +1,16 @@
+# Install PyTorch first with the CUDA build matching your driver, e.g.
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# then:
+#   pip install -r requirements.txt && pip install -e .
+numpy
+pandas
+pyarrow
+pillow
+opencv-python
+omegaconf>=2.3
+pycocotools
+matplotlib
+tqdm
+scipy
+timm>=0.9      # only needed for the ImageNet-pretrained baseline and the diversity reference encoder
+pytest

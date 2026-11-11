@@ -1,0 +1,10 @@
+# End-to-end smoke grid on synthetic data (see scripts/make_synthetic_data.py). Takes ~1-2 minutes.
+name: smoke
+baselines: [random]
+pretrain:
+  config: configs/smoke/pretrain_mae.yaml
+  pools: [smoke_narrow, smoke_diverse]
+finetune:
+  configs: [configs/smoke/seg.yaml, configs/smoke/det.yaml]
+  label_fractions: [0.5, 1.0]
+  seeds: [0]

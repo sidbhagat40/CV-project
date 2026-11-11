@@ -1,0 +1,9 @@
+# CONDITION-DIVERSE, single dataset: BDD with time-of-day x weather strata equalized (water-filling).
+# Compared with bdd_clearday this isolates condition diversity with the dataset/camera held fixed.
+name: bdd_mixed
+size: 18000
+seed: 0
+sources:
+  - {dataset: bdd100k, weight: 1, filter: {split: train}, exclude: {weather: unknown, timeofday: unknown}}
+balance_by: [timeofday, weather]
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]

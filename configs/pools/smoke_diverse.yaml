@@ -1,0 +1,10 @@
+# Synthetic-data smoke test only.
+name: smoke_diverse
+size: 24
+seed: 0
+sources:
+  - {dataset: bdd100k,  weight: 1, filter: {split: train}}
+  - {dataset: nuscenes, weight: 1, filter: {split: train}}
+  - {dataset: waymo,    weight: 1, filter: {split: train}}
+balance_by: [timeofday]
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]

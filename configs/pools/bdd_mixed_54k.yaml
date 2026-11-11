@@ -1,0 +1,8 @@
+# Scale axis (E3): single-source control at 54K. If all3@18K beats bdd_mixed@54K out-of-domain, diversity
+# is worth more than 3x single-source data.
+name: bdd_mixed_54k
+size: 54000
+seed: 0
+sources:
+  - {dataset: bdd100k, weight: 1, filter: {split: [train, test]}}
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]

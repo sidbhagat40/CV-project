@@ -1,0 +1,12 @@
+# E2 - Seen-unlabeled vs truly-unseen targets. Compare bdd_nusc (Waymo unseen) and bdd_waymo (nuScenes unseen)
+# with bdd_nusc_waymo (everything seen). Gains on a target that also vanish when its dataset is left out
+# mean the effect is unsupervised domain exposure, not general robustness.
+name: e2_leave_one_out
+baselines: []
+pretrain:
+  config: configs/pretrain/mae_vit_small.yaml
+  pools: [bdd_nusc, bdd_waymo, bdd_nusc_waymo]
+finetune:
+  configs: [configs/finetune/det_bdd_clearday.yaml]
+  label_fractions: [1.0]
+  seeds: [0, 1, 2]

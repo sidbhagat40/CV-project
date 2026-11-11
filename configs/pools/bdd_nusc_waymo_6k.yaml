@@ -1,0 +1,9 @@
+# Scale axis (E3): same composition as bdd_nusc_waymo at 1/3 the frames.
+name: bdd_nusc_waymo_6k
+size: 6000
+seed: 0
+sources:
+  - {dataset: bdd100k,  weight: 1, filter: {split: train}}
+  - {dataset: nuscenes, weight: 1, filter: {split: train}}
+  - {dataset: waymo,    weight: 1, filter: {split: train}}
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]

@@ -1,0 +1,15 @@
+# Semantic segmentation evaluation suite (Cityscapes 19-class taxonomy everywhere).
+# Domains whose files are missing are skipped, so you can start with BDD + ACDC only.
+eval:
+  in_domain: bdd_val
+  eval_short: 512
+  num_workers: 2
+  bootstrap: 1000
+  max_images: null
+  domains:
+    - {name: bdd_val,        file: "${paths.labeled_root}/seg/bdd_seg_val.jsonl"}
+    - {name: cityscapes_val, file: "${paths.labeled_root}/seg/cityscapes_val.jsonl"}
+    - {name: acdc_fog,       file: "${paths.labeled_root}/seg/acdc_val.jsonl", filter: {condition: fog}}
+    - {name: acdc_night,     file: "${paths.labeled_root}/seg/acdc_val.jsonl", filter: {condition: night}}
+    - {name: acdc_rain,      file: "${paths.labeled_root}/seg/acdc_val.jsonl", filter: {condition: rain}}
+    - {name: acdc_snow,      file: "${paths.labeled_root}/seg/acdc_val.jsonl", filter: {condition: snow}}

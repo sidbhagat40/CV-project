@@ -1,0 +1,17 @@
+# Frozen-backbone linear probe: cheapest readout of representation quality (~15-20 min on a laptop GPU).
+# Run this on every pool first; promote only interesting pools to full fine-tuning.
+_base_: seg_bdd.yaml
+output_dir: ${paths.runs_root}/finetune/manual_seg_linear
+
+model:
+  head: linear
+  freeze_backbone: true
+  drop_path: 0.0
+
+optim:
+  batch_size: 16
+  total_steps: 4000
+  warmup_steps: 200
+  lr: 1.0e-3
+  layer_decay: 1.0
+  weight_decay: 0.0

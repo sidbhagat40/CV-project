@@ -1,0 +1,6 @@
+_base_: ../finetune/det_bdd_clearday.yaml
+log_every: 1
+model: {arch: vit_tiny, init: random, drop_path: 0.0}
+data: {min_size: 96, max_size: 160, num_workers: 0}
+optim: {batch_size: 2, total_steps: 4, warmup_steps: 1}
+eval: {batch_size: 2, num_workers: 0, max_images: 10}

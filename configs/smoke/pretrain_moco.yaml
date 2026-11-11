@@ -1,0 +1,7 @@
+_base_: ../pretrain/moco_vit_small.yaml
+log_every: 1
+ckpt_every: 100
+model: {arch: vit_tiny}
+data: {input_size: [64, 64], num_workers: 0}
+moco: {mlp_dim: 128, dim: 32}
+optim: {batch_size: 8, grad_accum: 1, total_steps: 3, warmup_steps: 1}

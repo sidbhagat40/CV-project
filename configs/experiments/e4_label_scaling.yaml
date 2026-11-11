@@ -1,0 +1,16 @@
+# E4 - "Diverse unlabeled pretraining vs more single-domain labels". Label-fraction curves for every init.
+# The headline number is the exchange rate: how many x more source labels the narrow/baseline models need to
+# match the diverse-pretrained model's out-of-domain score.
+# Also provides the spread of baseline points needed to fit effective-robustness lines.
+# Uses a shorter 10k-step schedule (tagged) to keep 4 inits x 5 fractions x 2 seeds at ~50 GPU-hours.
+name: e4_label_scaling
+baselines: [random, imagenet]
+pretrain:
+  config: configs/pretrain/mae_vit_small.yaml
+  pools: [bdd_clearday, bdd_nusc_waymo]
+finetune:
+  configs: [configs/finetune/det_bdd_clearday.yaml]
+  label_fractions: [0.05, 0.1, 0.25, 0.5, 1.0]
+  seeds: [0, 1]
+  tag: s10k
+  overrides: [optim.total_steps=10000, optim.warmup_steps=500]

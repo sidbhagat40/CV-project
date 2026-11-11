@@ -1,0 +1,10 @@
+# E5 - Is the diversity effect method-specific? MoCo v3 with temporal positives on the narrow and diverse pools.
+name: e5_method
+baselines: []
+pretrain:
+  config: configs/pretrain/moco_vit_small.yaml
+  pools: [bdd_clearday, bdd_nusc_waymo]
+finetune:
+  configs: [configs/finetune/seg_bdd_linear.yaml, configs/finetune/det_bdd_clearday.yaml]
+  label_fractions: [1.0]
+  seeds: [0, 1]

@@ -1,0 +1,16 @@
+# E1 - Does pretraining-pool diversity improve cross-domain robustness at a fixed frame + compute budget?
+# narrow (bdd_clearday) -> condition-diverse (bdd_mixed) -> multi-source (bdd_nusc_waymo), all 18K frames.
+name: e1_diversity
+baselines: [random, imagenet]
+pretrain:
+  config: configs/pretrain/mae_vit_small.yaml
+  pools: [bdd_clearday, bdd_mixed, bdd_nusc_waymo]
+  overrides: []
+finetune:
+  configs:
+    - configs/finetune/seg_bdd_linear.yaml
+    - configs/finetune/seg_bdd.yaml
+    - configs/finetune/det_bdd_clearday.yaml
+  label_fractions: [1.0]
+  seeds: [0, 1, 2]
+  overrides: []

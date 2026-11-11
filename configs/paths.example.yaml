@@ -1,0 +1,16 @@
+# Copy this file to configs/paths.yaml (git-ignored) and edit for your machine.
+# Relative paths are resolved against the repository root.
+# Every config can reference these as ${paths.<key>}.
+
+raw:
+  bdd100k: D:/datasets/bdd100k             # contains images/100k, images/10k, labels/, (optional) videos/
+  nuscenes: D:/datasets/nuscenes           # contains v1.0-trainval/ (or v1.0-mini/), samples/, sweeps/
+  nuimages: D:/datasets/nuimages           # contains v1.0-val/, samples/
+  waymo_v2: D:/datasets/waymo_v2           # contains training/ and validation/ with camera_image/, camera_box/, stats/
+  cityscapes: D:/datasets/cityscapes       # contains leftImg8bit/, gtFine/
+  acdc: D:/datasets/acdc                   # contains rgb_anon/, gt/
+
+frames_root: D:/xdssl_data/frames          # downsized unlabeled frames + per-dataset manifest.parquet
+pools_root: D:/xdssl_data/pools            # sampled pretraining pools
+labeled_root: D:/xdssl_data/labeled        # unified jsonl annotation files (+ extracted Waymo images)
+runs_root: runs                            # checkpoints, logs, results

@@ -1,0 +1,10 @@
+# MULTI-SOURCE pool: equal thirds of BDD (US), nuScenes (Boston/Singapore) and Waymo (Phoenix/SF/MTV).
+# Same frame budget as the single-source pools.
+name: bdd_nusc_waymo
+size: 18000
+seed: 0
+sources:
+  - {dataset: bdd100k,  weight: 1, filter: {split: train}}
+  - {dataset: nuscenes, weight: 1, filter: {split: train}}
+  - {dataset: waymo,    weight: 1, filter: {split: train}}
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]

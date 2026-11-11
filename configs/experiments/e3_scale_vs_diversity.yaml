@@ -1,0 +1,10 @@
+# E3 - Unlabeled scale vs diversity: multi-source at 6K/18K/54K vs single-source BDD at 18K/54K.
+name: e3_scale_vs_diversity
+baselines: []
+pretrain:
+  config: configs/pretrain/mae_vit_small.yaml
+  pools: [bdd_nusc_waymo_6k, bdd_nusc_waymo, bdd_nusc_waymo_54k, bdd_mixed, bdd_mixed_54k]
+finetune:
+  configs: [configs/finetune/seg_bdd_linear.yaml, configs/finetune/det_bdd_clearday.yaml]
+  label_fractions: [1.0]
+  seeds: [0, 1]

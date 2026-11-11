@@ -1,0 +1,8 @@
+# NARROW pool: single dataset, single condition (BDD clear daytime). The "low diversity" anchor.
+# 18K is the largest iso-size that BDD keyframes alone can supply for clear+day; use BDD video frames to go bigger.
+name: bdd_clearday
+size: 18000
+seed: 0
+sources:
+  - {dataset: bdd100k, weight: 1, filter: {split: train, weather: clear, timeofday: day}}
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]

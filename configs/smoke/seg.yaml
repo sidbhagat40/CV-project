@@ -1,0 +1,6 @@
+_base_: ../finetune/seg_bdd.yaml
+log_every: 1
+model: {arch: vit_tiny, init: random, drop_path: 0.0}
+data: {crop_size: [64, 64], base_short: 64, scale_range: [0.75, 1.25], num_workers: 0}
+optim: {batch_size: 4, total_steps: 4, warmup_steps: 1}
+eval: {eval_short: 64, num_workers: 0, bootstrap: 50}

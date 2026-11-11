@@ -1,0 +1,37 @@
+# MAE pretraining of ViT-S/16 on one pool. Train length is in optimizer steps so every pool gets identical
+# compute. The experiment runner fills data.pool / output_dir / pool_name.
+method: mae
+seed: 0
+pool_name: null
+output_dir: ${paths.runs_root}/pretrain/manual
+log_every: 50
+ckpt_every: 2000
+
+model:
+  arch: vit_small
+  patch_size: 16
+  init_from: null          # null = from scratch (clean study) | imagenet = continued pretraining from ImageNet ViT
+
+data:
+  pool: ???                # path to pools/<name>/pool.parquet
+  input_size: [224, 224]
+  crop_scale: [0.2, 1.0]
+  num_workers: 6
+
+mae:
+  decoder_dim: 256
+  decoder_depth: 4
+  decoder_heads: 8
+  mask_ratio: 0.75
+  norm_pix_loss: true
+
+optim:
+  batch_size: 256          # ~5 GB with bf16 on ViT-S; lower + raise grad_accum on smaller GPUs
+  grad_accum: 1
+  total_steps: 30000       # ~7.7M samples; see docs/RESEARCH_PLAN.md "Compute budget"
+  warmup_steps: 1500
+  blr: 1.5e-4              # lr = blr * effective_batch / 256
+  weight_decay: 0.05
+  betas: [0.9, 0.95]
+  amp: bf16
+  clip_grad: null

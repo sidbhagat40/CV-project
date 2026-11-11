@@ -1,0 +1,8 @@
+# Leave-one-dataset-out: Waymo is never seen during pretraining, so Waymo targets are truly unseen.
+name: bdd_nusc
+size: 18000
+seed: 0
+sources:
+  - {dataset: bdd100k,  weight: 1, filter: {split: train}}
+  - {dataset: nuscenes, weight: 1, filter: {split: train}}
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]

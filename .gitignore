@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Local machine paths and all generated artifacts (anchored to the repo root)
+/configs/paths.yaml
+/runs/
+/data/
+/data_synth/
+/outputs/
+*.pt
+*.pth
+*.parquet

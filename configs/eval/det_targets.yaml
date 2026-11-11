@@ -1,0 +1,19 @@
+# 2D detection evaluation suite (harmonized classes: vehicle, pedestrian).
+# Source domain = BDD100K clear daytime; everything else is a shift in conditions and/or dataset.
+eval:
+  in_domain: bdd_clear_day
+  batch_size: 4
+  num_workers: 2
+  max_images: 2000          # cap per domain to keep evaluation time bounded; set null for final numbers
+  domains:
+    - {name: bdd_clear_day,      file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {weather: clear, timeofday: day}}
+    - {name: bdd_night,          file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {timeofday: night}}
+    - {name: bdd_dawn_dusk,      file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {timeofday: dawn_dusk}}
+    - {name: bdd_rain,           file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {weather: rain}}
+    - {name: bdd_snow,           file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {weather: snow}}
+    - {name: bdd_fog,            file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {weather: fog}}  # ~10s of images only
+    - {name: nuimages_boston,    file: "${paths.labeled_root}/det/nuimages_val.jsonl", filter: {region: boston}}
+    - {name: nuimages_singapore, file: "${paths.labeled_root}/det/nuimages_val.jsonl", filter: {region: singapore}}
+    - {name: waymo_day,          file: "${paths.labeled_root}/det/waymo_val.jsonl", filter: {timeofday: day}}
+    - {name: waymo_night,        file: "${paths.labeled_root}/det/waymo_val.jsonl", filter: {timeofday: night}}
+    - {name: waymo_dawn_dusk,    file: "${paths.labeled_root}/det/waymo_val.jsonl", filter: {timeofday: dawn_dusk}}
