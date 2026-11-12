@@ -128,3 +128,23 @@ def test_plot_pool_composition(tmp_path):
             {"n_frames": 10, "by_dataset": ds, "by_weather": {"clear": 10}, "by_timeofday": {"day": 6, "night": 4}}))
     plot_pool_composition(tmp_path, ["p1", "p2"], tmp_path / "o.png")
     assert (tmp_path / "o.png").stat().st_size > 0
+
+
+def test_bdd_hf_split_is_by_video_and_meets_quota(tmp_path):
+    from xdssl.data.sources.bdd100k_hf import _record, split_by_video
+    from pathlib import Path
+    samples = []
+    for v in range(40):
+        for i in range(3):
+            samples.append({"filepath": f"data/v{v:04d}-{i:04x}.jpg", "metadata": {"width": 1280, "height": 720},
+                            "weather": {"label": "rainy" if v % 2 else "clear"},
+                            "timeofday": {"label": "daytime"}, "scene": {"label": "city street"},
+                            "detections": {"detections": [
+                                {"label": "car", "bounding_box": [0.1, 0.2, 0.1, 0.1]},
+                                {"label": "traffic sign", "bounding_box": [0, 0, 0.1, 0.1]}]}})
+    recs = [_record(Path("raw"), s) for s in samples]
+    assert len(recs[0]["boxes"]) == 1 and recs[0]["boxes"][0] == pytest.approx([128.0, 144.0, 256.0, 216.0])
+    split = split_by_video(recs, {"clear_day": 6, "rain": 9}, seed=0)
+    for v in range(40):
+        assert len({split[f"v{v:04d}-{i:04x}"] for i in range(3)}) == 1
+    assert sum(s == "val" for s in split.values()) == 15

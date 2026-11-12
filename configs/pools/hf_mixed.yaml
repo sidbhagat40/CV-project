@@ -1,0 +1,8 @@
+# DIVERSE pool: same size, time-of-day x weather strata equalized (water-filling).
+name: hf_mixed
+size: 1200
+seed: 0
+sources:
+  - {dataset: bdd100k, weight: 1, filter: {split: train}, exclude: {weather: unknown, timeofday: unknown}}
+balance_by: [timeofday, weather]
+exclude_ids_files: ["${paths.labeled_root}/bdd_eval_ids.txt"]
