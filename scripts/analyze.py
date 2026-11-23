@@ -19,6 +19,8 @@ def main():
     ap.add_argument("--exp", default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--paths", default=None)
+    ap.add_argument("--compare", nargs=2, metavar=("A", "B"), default=None,
+                    help="init_names for a paired OOD comparison (A minus B), e.g. mae-bdd_mixed imagenet")
     a = ap.parse_args()
     paths = load_paths(a.paths)
     names = run_names(a.exp, a.paths) if a.exp else None
@@ -41,6 +43,11 @@ def main():
             er_tab = er.groupby(["init_name", "domain"])["eff_robustness"].mean().unstack()
             er_tab.to_csv(out / f"{proto}_effective_robustness.csv")
             print(f"\neffective robustness (OOD residual vs baseline fit):\n{er_tab.round(4).to_string()}")
+        if a.compare:
+            cmp = A.paired_comparison(d, *a.compare)
+            if not cmp.empty:
+                cmp.to_csv(out / f"{proto}_paired_{a.compare[0]}_vs_{a.compare[1]}.csv", index=False)
+                print(f"\npaired OOD comparison:\n{cmp.round(4).to_string(index=False)}")
         A.plot_domain_bars(d, out / f"{proto}_domains.png", label_fraction=d.label_fraction.max())
         A.plot_id_vs_ood(d, out / f"{proto}_id_vs_ood.png")
         if d.label_fraction.nunique() > 1:

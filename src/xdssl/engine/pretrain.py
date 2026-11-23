@@ -101,8 +101,11 @@ def run_pretrain(cfg) -> Path:
             torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(), "scheduler": sched.state_dict(),
                         "step": step + 1}, last_path)
 
-    torch.save({"encoder": model.encoder.state_dict(), "encoder_config": model.encoder.config,
-                "method": cfg.method, "pool": cfg.get("pool_name"), "config": to_dict(cfg)}, final_path)
+    final = {"encoder": model.encoder.state_dict(), "encoder_config": model.encoder.config,
+             "method": cfg.method, "pool": cfg.get("pool_name"), "config": to_dict(cfg)}
+    if cfg.method == "mae":
+        final["decoder"] = {k: v for k, v in model.state_dict().items() if not k.startswith("encoder.")}
+    torch.save(final, final_path)
     if last_path.exists():
         last_path.unlink()
     print(f"[pretrain] saved {final_path}")

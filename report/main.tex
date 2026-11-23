@@ -1,0 +1,161 @@
+\documentclass{article}
+\usepackage[preprint]{neurips_2025}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\usepackage{xcolor}
+\graphicspath{{../outputs/}{figures/}}
+
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\title{Cross-Domain Self-Supervised Pretraining\\for Robust Driving Perception}
+
+\author{%
+  \normalfont\mdseries Siddharth Bhagat (B23MT1040) \\
+  \normalfont\mdseries Kunal Jangid (B23MT1026) \\
+  \normalfont\mdseries Abhishek Yadav (B23MT1003)
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Driving perception models degrade under conditions they were not trained on, such as night, rain or snow.
+We ask whether self-supervised pretraining on \emph{more diverse} unlabeled driving footage improves robustness to such
+shifts. We pretrain a ViT-S/16 with masked autoencoding (MAE) on two pools of 1{,}200 BDD100K frames with identical size and
+compute: one containing only clear daytime frames and one balanced over weather and time of day. Each model, together
+with random and ImageNet-supervised initializations, is fine-tuned for vehicle/pedestrian detection on clear-day images
+and evaluated on held-out clear-day, night, dawn/dusk, rain and snow images. The condition-diverse pool gives a small but
+consistent gain over the narrow pool (mean out-of-domain AP $6.30$ vs.\ $6.10$; better in 9 of 10 domain--seed pairs), but
+with one pretraining seed and a tiny budget this is suggestive rather than conclusive. Both MAE models are far below ImageNet
+supervised initialization ($13.2$ AP), as expected for pretraining on only 1.2K frames.
+\end{abstract}
+
+\section{Introduction}
+Autonomous-driving perception is deployed across cities, weather and lighting that no labeled training set covers
+exhaustively. Labels are expensive, whereas unlabeled driving video is abundant. Self-supervised learning (SSL) can
+exploit this, but a basic question is open: when the unlabeled data budget is fixed, \emph{what composition of
+footage} yields the most robust representation? Comparing a large diverse corpus with a small narrow one confounds
+diversity with scale, so we control for dataset size and pretraining compute and vary only the diversity of the pool.
+
+\paragraph{Contributions.}
+(i) A controlled protocol with iso-size pools and iso-step pretraining that isolates diversity from scale;
+(ii) a multi-dataset, multi-condition evaluation of segmentation and detection with effective-robustness analysis;
+(iii) a comparison of the benefit of diverse pretraining against extra single-domain labels (an ``exchange rate'');
+(iv) an open codebase reproducing all experiments.
+
+\section{Literature Review}
+\paragraph{Self-supervised vision transformers.}
+MAE~\cite{he2022mae} reconstructs masked patches and is memory-efficient because the encoder sees only visible
+tokens; MoCo~v3~\cite{chen2021mocov3} learns invariances via contrastive views. DINOv2~\cite{oquab2024dinov2}
+shows that curating data for diversity matters for the quality of learned features.
+\paragraph{Robustness under distribution shift.}
+Taori et al.~\cite{taori2020measuring} separate genuine robustness from improvements that merely follow in-domain
+accuracy through \emph{effective robustness}, which we adopt.
+\paragraph{Driving datasets and domain generalization.}
+BDD100K~\cite{yu2020bdd100k}, nuScenes~\cite{caesar2020nuscenes}, Waymo~\cite{sun2020waymo}, Cityscapes~\cite{cordts2016cityscapes}
+and ACDC~\cite{sakaridis2021acdc} cover different geographies, sensors and conditions. Domain-generalization methods for
+segmentation such as RobustNet~\cite{choi2021robustnet} modify the training objective; we instead study the
+\emph{data} used for pretraining.
+
+\section{Problem Statement}
+Let $\mathcal{U}$ be a union of unlabeled driving datasets and $P \subset \mathcal{U}$ a pool with $|P|=n$.
+A backbone $f_P$ is pretrained on $P$ for a fixed number of optimizer steps, then fine-tuned on labeled data from a
+single source domain $\mathcal{D}_s$. For each target domain $\mathcal{D}_t$ we measure the metric $m_t(f_P)$
+(mIoU or AP). We test whether, for fixed $n$ and compute, pools of higher diversity give higher
+$m_t$ on shifted targets, in particular beyond what the in-domain score $m_s$ predicts.
+Hypotheses H1--H5 are: (H1) diverse pools improve OOD performance; (H2) this holds for targets whose dataset is absent
+from the pool; (H3) a diverse pool beats a $3\times$ larger single-source pool; (H4) diverse pretraining is worth
+$k\times$ more single-domain labels; (H5) the effect is not specific to MAE.
+
+\section{Proposed Method}
+\paragraph{Pools.} Frames from BDD100K, nuScenes and Waymo are resized to a 256\,px short side. \texttt{build\_pool}
+returns exactly $n$ frames (it raises otherwise), using source weights, filters and water-filled balancing over
+time of day and weather, and excludes all evaluation images to prevent leakage.
+\paragraph{Pretraining.} ViT-S/16 trained with MAE (75\% masking, normalized-pixel loss) or MoCo~v3 with temporal
+positives. Length is fixed in \emph{steps}, identical across pools.
+\paragraph{Fine-tuning.} The codebase supports semantic segmentation (Semantic FPN, linear probe); the experiments reported here use Faster R-CNN~\cite{ren2015faster}
+on a ViT pyramid for harmonized \textit{vehicle}/\textit{pedestrian} detection, with layer-wise learning-rate decay. The labeled
+subset depends only on file, filter, fraction and subset seed.
+\paragraph{Metrics.} mIoU/AP per domain; mean and worst OOD; effective robustness as the residual of OOD from a
+logit-linear fit of OOD on ID over baseline (random/ImageNet) models~\cite{taori2020measuring}; pool diversity via
+metadata entropy and the Vendi score~\cite{friedman2023vendi}. No checkpoint or hyper-parameter is chosen on OOD targets.
+
+\section{Experiments and Results}
+\paragraph{Data and scope.} The official BDD100K archives were not reachable from our machine, so we use the 10{,}000 official
+\emph{validation} images (with weather, time-of-day and box labels) from a public Hugging Face mirror.
+Images are split \emph{by video} into an evaluation partition (1{,}650 images, fixed per-condition quotas: 400 clear-day,
+500 night, 150 dawn/dusk, 300 rain, 300 snow) and a train partition (8{,}350 images) used for pretraining pools and
+fine-tuning. No evaluation drive appears in the train partition. This is a reduced study on a 4\,GB RTX 3050
+within a 15-hour total budget: detection only, no nuScenes, Waymo, Cityscapes or ACDC, and small pools.
+\paragraph{Pools.} \texttt{hf\_clearday}: 1{,}200 clear-daytime frames (condition entropy 0). \texttt{hf\_mixed}: 1{,}200
+frames with time-of-day $\times$ weather strata equalized (normalized weather entropy $0.91$, time-of-day entropy $0.98$); Fig.~\ref{fig:pools}.
+\paragraph{Protocol.} MAE: 8{,}000 steps, effective batch 128, identical for both pools (final loss $0.444$ narrow, $0.454$ diverse).
+Fine-tuning: Faster R-CNN on 1{,}364 clear-day labeled images, 3{,}000 steps, effective batch 4, layer-wise decay $0.7$, two
+seeds, final checkpoint, no selection on out-of-domain data. Metric: COCO AP (vehicle, pedestrian).
+\begin{table}[h]
+  \caption{Detection AP (\%) on held-out BDD slices, mean over 2 fine-tuning seeds. OOD mean/worst are over night, dawn/dusk, rain, snow.}
+  \label{tab:main}
+  \centering
+  \small
+  \begin{tabular}{lccccccc}
+    \toprule
+    Init & Clear day (ID) & Dawn/dusk & Night & Rain & Snow & Mean OOD & Worst OOD \\
+    \midrule
+    Random          & 7.6 & 5.8 & 1.2 & 4.8 & 4.4 & 4.0 & 1.2 \\
+    ImageNet (sup.) & 17.8 & 16.1 & 7.8 & 14.4 & 14.6 & 13.2 & 7.8 \\
+    MAE narrow      & 10.2 & 8.5 & 2.3 & 6.8 & 6.8 & 6.1 & 2.3 \\
+    MAE diverse     & 10.3 & 8.6 & 2.4 & 6.9 & 7.2 & 6.3 & 2.4 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\paragraph{Results.} Self-supervised pretraining on 1.2K frames helps over random initialization (mean OOD $6.1$--$6.3$ vs.\ $4.0$)
+but remains well below ImageNet-supervised initialization ($13.2$), so absolute numbers do not favor in-domain SSL at this scale.
+Between the two pools the diverse one is better in every domain on average, by $0.1$--$0.4$ AP, and in 9 of 10
+(domain, seed) pairs; the exception is rain with seed 1 ($-0.12$). A paired comparison over the 8 OOD (domain, seed) pairs gives a mean difference of
+$+0.20$ AP (bootstrap 95\% CI $[0.08, 0.30]$, Wilcoxon $p=0.023$). The gain also appears in-domain ($+0.16$), so it is not specific to
+shifted conditions. The effective-robustness residuals relative to the random/ImageNet fit are within $\pm0.5$ AP points for all
+models and the fit has only two baseline points, so we do not claim effective robustness.
+\paragraph{Caveats.} (i) Each pool was pretrained once; the pairs share the pretraining run, so the $p$-value reflects fine-tuning noise only
+and the pool effect cannot be separated from pretraining-seed variance. (ii) Pools are small (1.2K frames, about 850 passes over the pool at 8K steps), the
+gap is $\approx$3\% relative, and the narrow pool is clear-day by definition while the diverse pool also contains images from
+the same time and weather distribution as the evaluation slices, so proximity to the targets (not diversity per se) may explain part of the gain;
+we did not run the Fr\'echet-distance analysis. (iii) Only BDD images are used; no cross-dataset shift is tested.
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{figures/det_hf_domains.png}
+  \caption{Per-domain AP for each initialization (error bars: std over fine-tuning seeds).}
+  \label{fig:domains}
+\end{figure}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\linewidth]{figures/pools.png}
+  \caption{Composition of the two pretraining pools.}
+  \label{fig:pools}
+\end{figure}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.55\linewidth]{figures/mae_recon.png}
+  \caption{MAE reconstructions (diverse-pool model): input, 75\% masked input, reconstruction. Night and dusk scenes are reconstructed plausibly.}
+  \label{fig:recon}
+\end{figure}
+
+\section{Conclusions}
+In a controlled, reduced setting (equal pool size and pretraining compute, BDD100K only), pretraining MAE on a
+condition-balanced pool gave a small, consistent improvement in detection AP over a clear-day-only pool, both out of domain
+($+0.20$ AP, $p=0.023$) and in domain, in 9 of 10 comparisons. Evidence for H1 is therefore weakly positive but
+not conclusive: one pretraining seed, 1.2K-frame pools and a $\approx$3\% relative gap. H2--H5 (cross-dataset targets,
+scale versus diversity, label exchange rate, MoCo) were not tested within the 15-hour budget and a 4\,GB GPU.
+ImageNet-supervised initialization dominated every self-supervised model, so the practical value of tiny in-domain SSL is limited.
+\paragraph{Future work.} Larger pools (BDD video frames, nuScenes, Waymo), several pretraining seeds, a segmentation protocol with ACDC/Cityscapes
+targets, continued pretraining from ImageNet weights, and the Fr\'echet-distance analysis to separate diversity from target proximity.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

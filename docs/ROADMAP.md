@@ -35,7 +35,7 @@ Status legend: `[ ]` todo, `[x]` done.
    `seg_bdd_linear` for random / imagenet / both pools. Done when `scripts/analyze.py` produces the tables.
 
 ## P1: quality and rigor
-7. [ ] **MAE reconstruction visualizer** (`scripts/visualize_mae.py`): grid of input / masked / reconstruction
+7. [x] **MAE reconstruction visualizer** (`scripts/visualize_mae.py`): grid of input / masked / reconstruction
    from a `final.pt`. Sanity check for pretraining, and makes a good report figure.
 8. [ ] **Periodic ID-only validation** during fine-tuning (loss curve + ID metric every N steps, logged only;
    no checkpoint selection, and never on OOD targets).
@@ -43,9 +43,9 @@ Status legend: `[ ]` todo, `[x]` done.
    then resample images). Done when `results.json` has `AP_ci95` for detection domains.
 10. [ ] **Segmentation sliding-window evaluation** at full resolution as an option (`eval.mode: slide`).
 11. [ ] **TensorBoard / W&B logging** behind a config flag (`logging.backend`).
-12. [ ] **Paired significance test** between two inits over seeds and domains (paired bootstrap or Wilcoxon) in
+12. [x] **Paired significance test** between two inits over seeds and domains (paired bootstrap or Wilcoxon) in
     `analysis.py`, reported in the summary tables.
-13. [ ] **Pool-construction report:** `scripts/describe_pools.py` renders a bar chart of each pool's
+13. [x] **Pool-construction report:** `scripts/describe_pools.py` renders a bar chart of each pool's
     dataset / weather / time-of-day composition from `summary.json` (report figure).
 
 ## P2: research extensions
@@ -62,7 +62,7 @@ Status legend: `[ ]` todo, `[x]` done.
 20. [ ] **ConvNet backbone** (ResNet-50 via torchvision) to check whether conclusions hold beyond ViTs.
 
 ## P3: write-up
-21. [ ] `report/` LaTeX skeleton (Intro, Related Work, Method, Setup, Results, Analysis, Limitations), with
+21. [x] `report/` LaTeX skeleton (Intro, Related Work, Method, Setup, Results, Analysis, Limitations), with
     figures pulled from `outputs/`.
 22. [ ] Related-work notes: MAE, MoCo v3, DINOv2 (data curation for diversity), Taori et al. 2020 (effective
     robustness), ACDC, BDD100K, domain generalization for segmentation (e.g. RobustNet, DAFormer), driving SSL.

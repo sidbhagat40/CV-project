@@ -103,3 +103,48 @@ def test_layer_decay_groups():
     groups = param_groups(model, 1e-3, 0.05, backbone=vit, layer_decay=0.5)
     lrs = sorted({g["lr"] for g in groups})
     assert lrs[0] == pytest.approx(1e-3 * 0.5 ** 13) and lrs[-1] == pytest.approx(1e-3)
+
+
+def test_paired_comparison_detects_consistent_gain():
+    import pandas as pd
+    from xdssl.analysis import paired_comparison
+    rows = []
+    for seed in range(3):
+        for dom, base in [("fog", 0.30), ("night", 0.25), ("rain", 0.35)]:
+            for init, gain in [("a", 0.05), ("b", 0.0)]:
+                rows.append(dict(task="seg", label_fraction=1.0, seed=seed, domain=dom, init_name=init, is_id=False,
+                                 value=base + gain + 0.001 * seed))
+    out = paired_comparison(pd.DataFrame(rows), "a", "b")
+    assert out.n_pairs.iloc[0] == 9 and abs(out.mean_diff.iloc[0] - 0.05) < 1e-9
+    assert out.ci95_lo.iloc[0] > 0 and out.wilcoxon_p.iloc[0] < 0.01
+
+
+def test_plot_pool_composition(tmp_path):
+    import json
+    from xdssl.analysis import plot_pool_composition
+    for name, ds in [("p1", {"bdd100k": 10}), ("p2", {"bdd100k": 5, "waymo": 5})]:
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "summary.json").write_text(json.dumps(
+            {"n_frames": 10, "by_dataset": ds, "by_weather": {"clear": 10}, "by_timeofday": {"day": 6, "night": 4}}))
+    plot_pool_composition(tmp_path, ["p1", "p2"], tmp_path / "o.png")
+    assert (tmp_path / "o.png").stat().st_size > 0
+
+
+def test_bdd_hf_split_is_by_video_and_meets_quota(tmp_path):
+    from xdssl.data.sources.bdd100k_hf import _record, split_by_video
+    from pathlib import Path
+    samples = []
+    for v in range(40):
+        for i in range(3):
+            samples.append({"filepath": f"data/v{v:04d}-{i:04x}.jpg", "metadata": {"width": 1280, "height": 720},
+                            "weather": {"label": "rainy" if v % 2 else "clear"},
+                            "timeofday": {"label": "daytime"}, "scene": {"label": "city street"},
+                            "detections": {"detections": [
+                                {"label": "car", "bounding_box": [0.1, 0.2, 0.1, 0.1]},
+                                {"label": "traffic sign", "bounding_box": [0, 0, 0.1, 0.1]}]}})
+    recs = [_record(Path("raw"), s) for s in samples]
+    assert len(recs[0]["boxes"]) == 1 and recs[0]["boxes"][0] == pytest.approx([128.0, 144.0, 256.0, 216.0])
+    split = split_by_video(recs, {"clear_day": 6, "rain": 9}, seed=0)
+    for v in range(40):
+        assert len({split[f"v{v:04d}-{i:04x}"] for i in range(3)}) == 1
+    assert sum(s == "val" for s in split.values()) == 15

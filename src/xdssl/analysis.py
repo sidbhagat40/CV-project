@@ -66,6 +66,27 @@ def add_effective_robustness(df: pd.DataFrame, baseline_inits=("random", "imagen
     return pd.concat(out) if out else pd.DataFrame()
 
 
+def paired_comparison(df: pd.DataFrame, init_a: str, init_b: str, n_boot: int = 10000, seed: int = 0) -> pd.DataFrame:
+    """Paired test of `init_a` vs `init_b`: pairs are runs matching on (task, label_fraction, seed, domain), one
+    row per task. Reports mean difference (a - b) with a bootstrap 95% CI and a Wilcoxon signed-rank p-value."""
+    from scipy.stats import wilcoxon
+
+    key = ["task", "label_fraction", "seed", "domain"]
+    rng = np.random.default_rng(seed)
+    rows = []
+    for task, d in df[~df.is_id].groupby("task"):
+        a = d[d.init_name == init_a].set_index(key)["value"]
+        b = d[d.init_name == init_b].set_index(key)["value"]
+        diff = (a - b).dropna().to_numpy()
+        if len(diff) == 0:
+            continue
+        boots = rng.choice(diff, size=(n_boot, len(diff))).mean(1)
+        p = wilcoxon(diff).pvalue if np.any(diff != 0) else 1.0
+        rows.append({"task": task, "a": init_a, "b": init_b, "n_pairs": len(diff), "mean_diff": diff.mean(),
+                     "ci95_lo": np.percentile(boots, 2.5), "ci95_hi": np.percentile(boots, 97.5), "wilcoxon_p": p})
+    return pd.DataFrame(rows)
+
+
 def load_pool_diversity(pools_root: str | Path) -> pd.DataFrame:
     rows = []
     for p in Path(pools_root).glob("*/diversity.json"):
@@ -80,6 +101,25 @@ def _plt():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     return plt
+
+
+def plot_pool_composition(pools_root: str | Path, pools: list[str], out: Path):
+    """One stacked bar per pool (fraction of frames) for each of dataset / weather / time of day."""
+    plt = _plt()
+    summaries = [json.loads((Path(pools_root) / p / "summary.json").read_text()) for p in pools]
+    fields = [("by_dataset", "dataset"), ("by_weather", "weather"), ("by_timeofday", "time of day")]
+    fig, axes = plt.subplots(1, len(fields), figsize=(4 * len(fields), 3.2), squeeze=False)
+    for ax, (key, title) in zip(axes[0], fields):
+        cats = sorted({c for s in summaries for c in s[key]})
+        bottom = np.zeros(len(pools))
+        for c in cats:
+            frac = np.array([s[key].get(c, 0) / s["n_frames"] for s in summaries])
+            ax.bar(pools, frac, bottom=bottom, label=c)
+            bottom += frac
+        ax.set_title(title), ax.set_ylim(0, 1)
+        ax.tick_params(axis="x", rotation=30)
+        ax.legend(fontsize=7, bbox_to_anchor=(1.01, 1), loc="upper left")
+    fig.tight_layout(), fig.savefig(out, dpi=150), plt.close(fig)
 
 
 def plot_domain_bars(df: pd.DataFrame, out: Path, label_fraction: float | None = None):

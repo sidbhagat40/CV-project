@@ -1,0 +1,2 @@
+task,a,b,n_pairs,mean_diff,ci95_lo,ci95_hi,wilcoxon_p
+det,mae-hf_mixed,mae-hf_clearday,8,0.001954320630020572,0.000762897905503834,0.0030028143023868997,0.0234375

@@ -55,3 +55,22 @@ def test_experiment_expansion(synth):
     assert kinds.count("pool") == 2 and kinds.count("pretrain") == 2
     assert kinds.count("finetune") == 3 * 2 * 2  # inits x configs x label fractions
     assert len({j.name for j in jobs if j.kind == "finetune"}) == 12
+
+
+def test_mae_visualizer_roundtrip(synth, tmp_path):
+    import importlib.util
+    import torch
+    spec = load_config("configs/pools/smoke_diverse.yaml", paths_file=synth)
+    pool = build_pool({k: v for k, v in spec.items() if k != "paths"}, spec.paths.frames_root)
+    pool.to_parquet(tmp_path / "pool.parquet")
+    ckpt = run_pretrain(load_config("configs/smoke/pretrain_mae.yaml",
+                                    [f"data.pool={(tmp_path / 'pool.parquet').as_posix()}",
+                                     f"output_dir={(tmp_path / 'mae').as_posix()}"], synth))
+    sp = importlib.util.spec_from_file_location("visualize_mae", "scripts/visualize_mae.py")
+    mod = importlib.util.module_from_spec(sp)
+    sp.loader.exec_module(mod)
+    model, cfg = mod.load_mae(ckpt, torch.device("cpu"))
+    x = torch.randn(2, 3, *cfg.data.input_size)
+    masked, recon, paste = model.reconstruct(x)
+    assert masked.shape == recon.shape == paste.shape == x.shape
+    assert (masked == 0).float().mean() > 0.5  # ~75% of patches are masked

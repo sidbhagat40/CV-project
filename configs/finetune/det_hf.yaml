@@ -1,0 +1,36 @@
+# Faster R-CNN fine-tuning on clear-day BDD images (vehicle + pedestrian) from the HF mirror's train partition,
+# evaluated on held-out clear-day / night / dawn-dusk / rain / snow. Batch 2 x accum 2 fits a 4 GB GPU.
+_base_: ../eval/det_hf_targets.yaml
+task: det
+seed: 0
+output_dir: ${paths.runs_root}/finetune/manual_det
+log_every: 50
+meta: {}
+
+model:
+  arch: vit_small
+  init: imagenet
+  ckpt: null
+  freeze_backbone: false
+  drop_path: 0.1
+
+data:
+  train: ${paths.labeled_root}/det/bdd_det_train.jsonl
+  train_filter: {weather: clear, timeofday: day}
+  label_fraction: 1.0
+  subset_seed: 0
+  min_size: 576
+  max_size: 1024
+  num_workers: 6
+
+optim:
+  batch_size: 2
+  grad_accum: 2
+  total_steps: 3000
+  warmup_steps: 200
+  lr: 1.0e-4
+  layer_decay: 0.7
+  head_lr_mult: 1.0
+  weight_decay: 0.05
+  amp: bf16
+  clip_grad: 5.0

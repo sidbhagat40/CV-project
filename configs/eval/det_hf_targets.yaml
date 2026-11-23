@@ -1,0 +1,12 @@
+# Detection evaluation on the held-out BDD-val partition (Hugging Face mirror study). Source domain = clear day.
+eval:
+  in_domain: bdd_clear_day
+  batch_size: 4
+  num_workers: 2
+  max_images: null
+  domains:
+    - {name: bdd_clear_day, file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {weather: clear, timeofday: day}}
+    - {name: bdd_night,     file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {timeofday: night}}
+    - {name: bdd_dawn_dusk, file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {timeofday: dawn_dusk}}
+    - {name: bdd_rain,      file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {weather: rain}}
+    - {name: bdd_snow,      file: "${paths.labeled_root}/det/bdd_det_val.jsonl", filter: {weather: snow}}
